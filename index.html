@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Öffentlich-rechtliche Livestreams</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121b2d;
+      --panel-2:#1b2940;
+      --text:#edf5ff;
+      --muted:#9bb0d3;
+      --accent:#56ccff;
+      --danger:#ff5d75;
+      --success:#7de7b4;
+      --border:#2a3b59;
+    }
+
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top, rgba(86,204,255,0.18), transparent 25%),
+        linear-gradient(180deg, #07101d, var(--bg));
+    }
+
+    header{
+      text-align:center;
+      padding:2rem 1rem 1rem;
+    }
+    h1{
+      margin:0;
+      font-size:clamp(2rem, 4vw, 3rem);
+      letter-spacing:-0.04em;
+    }
+    .subtitle{
+      color:var(--muted);
+      margin:.6rem 0 0;
+      font-size:1rem;
+    }
+
+    main{
+      width:min(1100px, calc(100% - 1.25rem));
+      margin:0 auto 2.5rem;
+    }
+
+    .player-box{
+      background:rgba(18,27,45,0.92);
+      border:1px solid var(--border);
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 10px 35px rgba(0,0,0,0.28);
+    }
+
+    video{
+      display:block;
+      width:100%;
+      aspect-ratio:16/9;
+      background:#000;
+    }
+
+    .player-meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:1rem;
+      flex-wrap:wrap;
+      padding:.9rem 1rem;
+      border-top:1px solid var(--border);
+      background:var(--panel);
+    }
+
+    .channel-name{
+      font-weight:700;
+      letter-spacing:.01em;
+      font-size:1.05rem;
+    }
+
+    .status{
+      color:var(--muted);
+      min-height:1.2em;
+      font-size:.9rem;
+    }
+
+    .status.ok { color:var(--success); }
+    .status.error { color:var(--danger); }
+
+    .channels{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+      gap:12px;
+      margin-top:1.25rem;
+    }
+
+    .channel-card{
+      background:rgba(18,27,45,0.92);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:.85rem .9rem;
+      cursor:pointer;
+      transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+      user-select:none;
+    }
+
+    .channel-card:hover,
+    .channel-card.active{
+      transform:translateY(-2px);
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px rgba(86,204,255,0.35);
+    }
+
+    .channel-card h3{
+      margin:0;
+      font-size:1rem;
+    }
+
+    .channel-card .group{
+      margin-top:.45rem;
+      color:var(--muted);
+      font-size:.75rem;
+      display:block;
+    }
+
+    .channel-card .live{
+      display:inline-flex;
+      align-items:center;
+      gap:.45rem;
+      margin-top:.75rem;
+      color:#ff9dad;
+      font-size:.72rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+
+    .channel-card .live::before{
+      content:"";
+      width:.55rem;
+      height:.55rem;
+      border-radius:50%;
+      background:var(--danger);
+      display:inline-block;
+      box-shadow:0 0 12px rgba(255,93,117,.7);
+    }
+
+    .custom{
+      margin-top:1.5rem;
+      background:rgba(18,27,45,0.92);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:1rem;
+    }
+
+    .custom label{
+      font-weight:700;
+      display:block;
+      margin-bottom:.5rem;
+    }
+
+    .custom input{
+      width:100%;
+      padding:.8rem .9rem;
+      background:rgba(10,16,29,0.85);
+      border:1px solid var(--border);
+      border-radius:10px;
+      color:var(--text);
+      font-size:1rem;
+    }
+
+    .custom button{
+      margin-top:.75rem;
+      padding:.75rem 1rem;
+      background:var(--accent);
+      border:none;
+      border-radius:10px;
+      color:#05131d;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    footer{
+      text-align:center;
+      color:var(--muted);
+      padding:0 1rem 2rem;
+      font-size:.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Livestreams</h1>
+    <p class="subtitle">Öffentlich-rechtliche Sender • HLS-Player</p>
+  </header>
+
+  <main>
+    <section class="player-box">
+      <video id="video" controls playsinline></video>
+      <div class="player-meta">
+        <div class="channel-name" id="currentChannel">Das Erste</div>
+        <div class="status" id="status">Bereit</div>
+      </div>
+    </section>
+
+    <section id="channels" class="channels" aria-label="Senderauswahl"></section>
+
+    <div class="custom">
+      <label for="customUrl">Eigene HLS-URL laden</label>
+      <input id="customUrl" type="text" placeholder="https://.../master.m3u8">
+      <button id="loadCustomBtn">Stream laden</button>
+    </div>
+  </main>
+
+  <footer>
+    Hinweis: Einige regionale ARD-URLs sind oft regional/zeitlich unterschiedlich und können wechseln.
+  </footer>
+
+  <script>
+    const streams = [
+      { name: "Das Erste", group: "ARD", url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
+      { name: "ONE", group: "ARD", url:"https://one-sec.akamaized.net/one/live/master.m3u8" },
+      { name: "ARD alpha", group: "ARD", url:"https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8" },
+      { name: "tagesschau24", group: "ARD", url:"https://tagesschau-live.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8" },
+
+      { name: "ZDF", group: "ZDF", url:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
+      { name: "ZDFinfo", group: "ZDF", url:"https://zdf-hls-17.akamaized.net/hls/live/2016500/de/high/master.m3u8" },
+      { name: "ZDFneo", group: "ZDF", url:"https://zdf-hls-16.akamaized.net/hls/live/2016499/de/high/master.m3u8" },
+      { name: "3sat", group: "ZDF", url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" },
+      { name: "Phoenix", group: "ARD/ZDF", url:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
+
+      { name: "WDR", group: "ARD", url:"https://mcdn.wdr.de/wdr/wdrfs/de/master.m3u8" },
+      { name: "BR", group: "ARD", url:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
+      { name: "NDR Niedersachsen", group: "ARD", url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
+      { name: "NDR Hamburg", group: "ARD", url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8" },
+      { name: "NDR Mecklenburg-Vorpommern", group: "ARD", url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8" },
+      { name: "NDR Schleswig-Holstein", group: "ARD", url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8" },
+
+      { name: "MDR Sachsen", group: "ARD", url:"https://mdrtvsnhls.akamaized.net/hls/live/2016928/mdrtvsn/master.m3u8" },
+      { name: "MDR Thüringen", group: "ARD", url:"https://mdrtvthhls.akamaized.net/hls/live/2016880/mdrtvth/master.m3u8" },
+      { name: "MDR Sachsen-Anhalt", group: "ARD", url:"https://mdrtvsahls.akamaized.net/hls/live/2016879/mdrtvsa/master.m3u8" },
+
+      { name: "SWR BW", group: "ARD", url:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
+      { name: "SWR RP", group: "ARD", url:"https://swrrpd-hls.akamaized.net/hls/live/2018676/swrrpd/master.m3u8" },
+
+      { name: "HR", group: "ARD", url:"https://hrhls.akamaized.net/hls/live/2024525/hrhls/master.m3u8" },
+
+      { name: "RBB Berlin", group: "ARD", url:"https://rbb-hls-berlin.akamaized.net/hls/live/2017824/rbb_berlin/master.m3u8" },
+      { name: "RBB Brandenburg", group: "ARD", url:"https://rbb-hls-brandenburg.akamaized.net/hls/live/2017825/rbb_brandenburg/master.m3u8" },
+
+      { name: "SR", group: "ARD", url:"https://srfs.akamaized.net/hls/live/689649/srfsgeo/index.m3u8" },
+
+      { name: "Deutschlandfunk", group: "Radio", url:"https://st01.dlf.de/dlf/01/128/mp3/stream.mp3" }
+    ];
+
+    const video = document.getElementById("video");
+    const statusEl = document.getElementById("status");
+    const currentChannelEl = document.getElementById("currentChannel");
+    const channelsEl = document.getElementById("channels");
+    const customUrlEl = document.getElementById("customUrl");
+    const loadCustomBtn = document.getElementById("loadCustomBtn");
+
+    let hls = null;
+
+    function setStatus(text, mode = "") {
+      statusEl.textContent = text;
+      statusEl.className = "status " + mode;
+    }
+
+    function stopHls() {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+    }
+
+    function loadStream(url, label) {
+      currentChannelEl.textContent = label;
+      setStatus("Stream wird geladen…");
+
+      stopHls();
+
+      if (url.includes(".mp3") || url.includes(".aac") || url.includes(".m4a")) {
+        video.src = url;
+        video.play()
+          .then(() => setStatus("Live", "ok"))
+          .catch(() => setStatus("Bitte Play drücken", "ok"));
+        return;
+      }
+
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = url;
+        video.play()
+          .then(() => setStatus("Live", "ok"))
+          .catch(() => setStatus("Bitte Play drücken", "ok"));
+        return;
+      }
+
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls({
+          liveSyncDurationCount: 3,
+          backBufferLength: 90
+        });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play()
+            .then(() => setStatus("Live", "ok"))
+            .catch(() => setStatus("Bitte Play drücken", "ok"));
+        });
+
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data && data.fatal) {
+            setStatus("Stream konnte nicht geladen werden", "error");
+          }
+        });
+        return;
+      }
+
+      setStatus("Dieser Browser unterstützt HLS nicht", "error");
+    }
+
+    streams.forEach((stream) => {
+      const card = document.createElement("div");
+      card.className = "channel-card";
+      card.innerHTML = `
+        <h3>${stream.name}</h3>
+        <span class="group">${stream.group}</span>
+        <span class="live">LIVE</span>
+      `;
+
+      card.addEventListener("click", () => {
+        document.querySelectorAll(".channel-card").forEach(el => el.classList.remove("active"));
+        card.classList.add("active");
+        loadStream(stream.url, stream.name);
+      });
+
+      channelsEl.appendChild(card);
+    });
+
+    loadCustomBtn.addEventListener("click", () => {
+      const url = customUrlEl.value.trim();
+      if (!url) {
+        setStatus("Bitte URL eingeben", "error");
+        return;
+      }
+      document.querySelectorAll(".channel-card").forEach(el => el.classList.remove("active"));
+      loadStream(url, "Eigener Stream");
+    });
+
+    const first = streams[0];
+    document.querySelectorAll(".channel-card")[0].classList.add("active");
+    loadStream(first.url, first.name);
+  </script>
+</body>
+</html>
